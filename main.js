@@ -1,46 +1,84 @@
-import * as Tone from "tone";
+console.clear();
 
-// Create context, check if supported
-const actx = new (AudioContext || webkitAudioContext)();
-if (!actx) throw new Error("Your browser does not support AudioContext");
+// for cross browser
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
 
-const synthesize = () => {
-  const osc = actx.createOscillator();
-  osc.type = "sine";
-  osc.frequency.value = 440;
-  osc.connect(actx.destination);
-  osc.start();
-  osc.stop(actx.currentTime + 1);
-}
+// load some sound
+const audioElement = document.querySelector('audio');
+const track = audioCtx.createMediaElementSource(audioElement);
 
+const playButton = document.querySelector('.tape-controls-play');
 
-document.addEventListener('keydown', function(event) {
-  if (event.key === 'a') {
-    synthesize();
+let soundPlaying = false
+let makePlay = false
+
+document.addEventListener('keydown', (event) => {
+
+  if (event.key === "f"){
+  //       // check if context is in suspended state (autoplay policy)
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    
+    if (soundPlaying === false) {
+      audioElement.play();
+      soundPlaying = true;
+    // if track is playing pause it
+    } else if (soundPlaying === true) {
+      audioElement.pause();
+      soundPlaying = false;
+    }
   }
+    
+    // let state = this.getAttribute('aria-checked') === "true" ? true : false;
+    // this.setAttribute( 'aria-checked', state ? "false" : "true" );
+  // }
 })
 
-//create a synth and connect it to the main output (your speakers)
-// const synth = new Tone.Synth().toDestination();
 
-// const keys = ['qwertyuiopasdfghjklzxcvbnm']
-// const notes = ['ABCDEFG']
-// const octaves = ['123456']
-//play a middle 'C' for the duration of an 8th note
-// synth.triggerAttackRelease("C4", "8n");
+// if track ends
+audioElement.addEventListener('ended', () => {
+	playButton.dataset.playing = 'false';
+	playButton.setAttribute( "aria-checked", "false" );
+}, false);
 
-// // Add an event listener for the 'keydown' event
-// document.addEventListener('keydown', function(event) {
+// volume
+const gainNode = audioCtx.createGain();
 
-//   if (event.key === 'a') {
-//     // synth.triggerAttackRelease("C4", "8n");
-//     const now = Tone.now();
-//     synth.triggerAttack("C4", now);
-// // wait one second before triggering the release
-//     synth.triggerRelease(now + 1);
-//   } else if (event.key === 's') {
-//     synth.triggerAttackRelease("C5", "8n");
-//   } else if (event.key === 'd'){
-//     synth.triggerAttackRelease("A3", "8n");
-//   }
-// });
+const volumeControl = document.querySelector('[data-action="volume"]');
+volumeControl.addEventListener('input', function() {
+	gainNode.gain.value = this.value;
+}, false);
+
+// panning
+const pannerOptions = {pan: 0};
+const panner = new StereoPannerNode(audioCtx, pannerOptions);
+
+const pannerControl = document.querySelector('[data-action="panner"]');
+pannerControl.addEventListener('input', function() {
+	panner.pan.value = this.value;	
+}, false);
+
+// connect our graph
+track.connect(gainNode).connect(panner).connect(audioCtx.destination);
+
+const powerButton = document.querySelector('.control-power');
+
+powerButton.addEventListener('click', function() {
+	if (this.dataset.power === 'on') {
+		audioCtx.suspend();
+		this.dataset.power = 'off';
+	} else if (this.dataset.power === 'off') {
+		audioCtx.resume();
+		this.dataset.power = 'on';
+	}
+	this.setAttribute( "aria-checked", state ? "false" : "true" );
+	console.log(audioCtx.state);
+}, false);
+
+// Track credit: Outfoxing the Fox by Kevin MacLeod under Creative Commons 
+
+
+
+
