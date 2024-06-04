@@ -1,6 +1,7 @@
 class AudioEngine {
   constructor() {
     this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    this.loops = {}
   }
 
   async loadAudioFile(url) {
@@ -9,40 +10,28 @@ class AudioEngine {
     return this.audioCtx.decodeAudioData(audioData);
   }
 
-  async armAudio(){
-    const audioBuffer = await this.loadAudioFile('sfx/cicadas.wav')
-    let bufferSource
-    let soundPlaying = false
+  async createLoop(name, url){
+    let bufferSource = this.audioCtx.createBufferSource();
+    bufferSource.buffer = await this.loadAudioFile(url)
+    bufferSource.connect(this.audioCtx.destination);
+    bufferSource.loop = true;
+    bufferSource.start();
+    this.loops[name] = bufferSource
+  }
 
-    document.addEventListener('keydown', (event) => {
-
-      if (this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume();
-      }
-
-      if (event.key === "f"){
-
-        // If the AudioContext is in the suspended state, resume it
-
-        
-        // If playback is not already playing, start playback from the beginning
-        if (!soundPlaying) {
-          // Re-create the BufferSourceNode instance
-          bufferSource = this.audioCtx.createBufferSource();
-          bufferSource.buffer = audioBuffer;
-          bufferSource.connect(this.audioCtx.destination);
-          bufferSource.start();
-          soundPlaying = true;
-        } else {
-          // If playback is already playing, stop playback
-          bufferSource.stop();
-          soundPlaying = false;
-        }
-      }
-    })
+  async activate(){
+    if (this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume();
+    }
   }
 
 }
 
 const speakers = new AudioEngine();
-speakers.armAudio();
+
+document.addEventListener("keyup", function(event){
+  if (event.key === "f"){
+    speakers.activate()
+    speakers.createLoop('cicadas', "sfx/cicadas.wav")
+  }
+})
