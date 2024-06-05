@@ -1,8 +1,14 @@
 class AudioEngine {
   constructor() {
     this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    this.loops = {}
+
+    // These buffers are loaded on initiatializationm but the bufferSourceNodes created at playback
     this.oneShotBuffers = {}
+
+    // These buffers are loaded on initiation AND the bufferSourceNodes are created and started on initialization at low gain
+    this.loops = {}
+
+    // These are bufferSourceNodes that are created and started at playback
     this.oneShots = {}
   }
 
@@ -34,7 +40,13 @@ class AudioEngine {
     let gainNode = this.audioCtx.createGain();
     gainNode.gain.value = .06
 
-    bufferSource.connect(gainNode).connect(this.audioCtx.destination);
+    // let delay = this.audioCtx.createDelay(99);
+    let biquadFilter = this.audioCtx.createBiquadFilter();
+    biquadFilter.type = "lowpass";
+    biquadFilter.frequency.value = 100;
+
+    bufferSource.connect(gainNode).connect(biquadFilter).connect(this.audioCtx.destination);
+    // bufferSource.connect(gainNode).connect(delay).connect(this.audioCtx.destination);
     bufferSource.loop = true;
     bufferSource.start();
     this.loops[name] = {
@@ -45,6 +57,17 @@ class AudioEngine {
 
   async activateContext(){
     if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+  }
+
+  // lowpass with 200 leads to bass rushing, 1000 is a slight lowpass
+  // Types available: lowpass, lowshelf, highpass, highshelf, bandpass, allpass, notch, peaking
+  async biquad(loopName, type, frequency){
+    if (!this.loops[loopName]){
+      return
+    }
+
+    this.loops[loopName].biquadFilter.type = type
+    this.loops[loopName].biquadFilter.frequency.value = frequency
   }
 
   async loopVolume(loopName, volume, additive = false){
